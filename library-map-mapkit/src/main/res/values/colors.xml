@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="light_transparent_blue">#2B4A90E2</color>
+    <color name="brandLight">#3498DB</color>
+    <color name="blue">#3296CE</color>
+    <color name="white">#FFFFFF</color>
+    <color name="light_black">#1B1B1B</color>
+    <color name="transparent">#00FFFFFF</color>
+    <color name="transparent_crimson">#80F01231</color>
+    <color name="transparent_yellow">#80DEB419</color>
+    <color name="transparent_green">#8068ad45</color>
+    <color name="light_gray">#DBDBDB</color>
+    <color name="silver">#8E8E8E</color>
+    <color name="transparent_anthracite">#20444444</color>
+    <color name="shadow_white">#F0F0F0</color>
+
+</resources>
