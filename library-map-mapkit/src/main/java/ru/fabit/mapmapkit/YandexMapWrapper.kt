@@ -1051,7 +1051,7 @@ internal class YandexMapWrapper(
                     val color = geometryColorFactory.getColorStrokeGeometry(context, marker, isRadarOn, isDisabledOn)
                     for (coordinate in coordinates) {
                         val circle = this.mapReference?.get()?.mapObjects?.addCircle(
-                            Circle(Point(coordinate.first, coordinate.second), 1.5f),
+                            Circle(Point(coordinate.second, coordinate.first), 1.5f),
                             color,
                             1.2f,
                             color
