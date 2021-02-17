@@ -218,7 +218,7 @@ internal class YandexMapWrapper(
         startMapKit(mapView, style)
     }
 
-    override fun start(parentView: View) {
+    override fun start() {
         MapKitFactory.getInstance().onStart()
         mapView?.onStart()
     }
@@ -249,6 +249,24 @@ internal class YandexMapWrapper(
         MapKitFactory.getInstance().onStop()
         enableLocation(false)
 
+    }
+
+    override fun destroy() {
+        mapView?.map?.mapObjects?.clear()
+        removeLayoutChangeListeners()
+        removeMapListeners()
+        removeLayoutChangeListeners()
+        removeMapListeners()
+        removeSizeChangeListeners()
+        removeVisibleRegionListeners()
+        mapView?.removeOnLayoutChangeListener(layoutChangeListener)
+        mapView?.removeSizeChangedListener(sizeChangedListener)
+        mapView?.map?.removeInputListener(inputListener)
+        MapKitFactory.getInstance().storageManager.clear {}
+        layer?.clear()
+        mapReference?.clear()
+        mapView = null
+        animationMarkerListener = null
     }
 
     override fun clearCache(id: String) {
