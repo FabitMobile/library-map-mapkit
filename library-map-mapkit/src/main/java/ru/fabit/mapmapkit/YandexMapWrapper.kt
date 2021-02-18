@@ -569,12 +569,12 @@ internal class YandexMapWrapper(
                 rect.bottomLeft.longitude
             ))
             points.add(Point(
-                rect.bottomRight.longitude,
-                rect.bottomRight.latitude
+                rect.bottomRight.latitude,
+                rect.bottomRight.longitude
             ))
             points.add(Point(
-                rect.topRight.longitude,
-                rect.topRight.latitude
+                rect.topRight.latitude,
+                rect.topRight.longitude
             ))
             points.add(Point(
                 rect.topLeft.latitude,
