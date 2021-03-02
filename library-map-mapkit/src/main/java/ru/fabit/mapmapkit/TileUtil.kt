@@ -16,8 +16,8 @@ object TileUtil {
         return MapBounds(
             southWest.latitude,
             northEast.latitude,
-            northEast.longitude,
-            southWest.longitude
+            southWest.longitude,
+            northEast.longitude
         )
     }
 }
