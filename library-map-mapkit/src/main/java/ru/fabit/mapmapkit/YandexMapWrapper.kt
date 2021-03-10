@@ -221,6 +221,15 @@ internal class YandexMapWrapper(
     override fun start(parentView: View) {
         MapKitFactory.getInstance().onStart()
         mapView?.onStart()
+        locationManager?.subscribeForLocationUpdates(
+            0.0,
+            0,
+            10.0,
+            false,
+            FilteringMode.OFF,
+            observableLocationListener
+        )
+        locationManager?.requestSingleUpdate(singleLocationListener)
     }
 
     override fun getMapView(): View? {
