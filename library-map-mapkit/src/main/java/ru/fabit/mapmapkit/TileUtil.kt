@@ -9,15 +9,15 @@ object TileUtil {
 
     fun getRegion(projection: Projection, tileId: TileId): MapBounds {
         val a = XYPoint(tileId.x.toDouble(), tileId.y.toDouble())
-        val northEast = projection.xyToWorld(a, tileId.z)
+        val northWest = projection.xyToWorld(a, tileId.z)
         val b = XYPoint(tileId.x + 1.0, tileId.y + 1.0)
-        val southWest = projection.xyToWorld(b, tileId.z)
+        val southEast = projection.xyToWorld(b, tileId.z)
 
         return MapBounds(
-            southWest.latitude,
-            northEast.latitude,
-            southWest.longitude,
-            northEast.longitude
+            southEast.latitude,
+            northWest.latitude,
+            northWest.longitude,
+            southEast.longitude
         )
     }
 }
