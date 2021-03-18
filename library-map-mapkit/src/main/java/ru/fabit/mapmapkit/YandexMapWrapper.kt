@@ -218,7 +218,7 @@ internal class YandexMapWrapper(
         startMapKit(mapView, style)
     }
 
-    override fun start(parentView: View) {
+    override fun start() {
         MapKitFactory.getInstance().onStart()
         mapView?.onStart()
         locationManager?.subscribeForLocationUpdates(
@@ -258,6 +258,24 @@ internal class YandexMapWrapper(
         MapKitFactory.getInstance().onStop()
         enableLocation(false)
 
+    }
+
+    override fun destroy() {
+        mapView?.map?.mapObjects?.clear()
+        removeLayoutChangeListeners()
+        removeMapListeners()
+        removeLayoutChangeListeners()
+        removeMapListeners()
+        removeSizeChangeListeners()
+        removeVisibleRegionListeners()
+        mapView?.removeOnLayoutChangeListener(layoutChangeListener)
+        mapView?.removeSizeChangedListener(sizeChangedListener)
+        mapView?.map?.removeInputListener(inputListener)
+        MapKitFactory.getInstance().storageManager.clear {}
+        layer?.clear()
+        mapReference?.clear()
+        mapView = null
+        animationMarkerListener = null
     }
 
     override fun clearCache(id: String) {
@@ -452,7 +470,7 @@ internal class YandexMapWrapper(
             mapListeners.forEach {
                 it.onMapTap(
                     MapPoint(
-                        point.latitude,
+                        point.longitude,
                         point.latitude
                     )
                 )
@@ -481,7 +499,7 @@ internal class YandexMapWrapper(
             mapListeners.forEach {
                 it.onPolyLineClicked(
                     MapPoint(
-                        point.latitude,
+                        point.longitude,
                         point.latitude
                     )
                 )
@@ -555,10 +573,22 @@ internal class YandexMapWrapper(
     override fun drawQuad(key: String, rect: Rect, color: Int) {
         uiThreadHandler.post {
             val points: MutableList<Point> = ArrayList()
-            points.add(Point(rect.bottomLeft.longitude, rect.bottomLeft.latitude))
-            points.add(Point(rect.bottomRight.longitude, rect.bottomRight.latitude))
-            points.add(Point(rect.topRight.longitude, rect.topRight.latitude))
-            points.add(Point(rect.topLeft.longitude, rect.topLeft.latitude))
+            points.add(Point(
+                rect.bottomLeft.latitude,
+                rect.bottomLeft.longitude
+            ))
+            points.add(Point(
+                rect.bottomRight.latitude,
+                rect.bottomRight.longitude
+            ))
+            points.add(Point(
+                rect.topRight.latitude,
+                rect.topRight.longitude
+            ))
+            points.add(Point(
+                rect.topLeft.latitude,
+                rect.topLeft.longitude
+            ))
 
             val innerRings = java.util.ArrayList<LinearRing>()
             val outerRing = LinearRing(points.toList())
