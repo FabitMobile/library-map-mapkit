@@ -230,6 +230,7 @@ internal class YandexMapWrapper(
             observableLocationListener
         )
         locationManager?.requestSingleUpdate(singleLocationListener)
+        enableLocation(true)
     }
 
     override fun getMapView(): View? {
