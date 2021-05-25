@@ -54,7 +54,7 @@ internal class GeoJsonTileProvider(
 
     private fun generateGeoJsonFeature(tileId: TileId, projection: Projection): ByteArray {
         val mapBounds = TileUtil.getRegion(projection, tileId)
-        return geoJsonFactory.createGeoJsonString(mapBounds).toByteArray()
+        return geoJsonFactory.createGeoJsonString(mapBounds, 0).toByteArray()
     }
 
     private fun drawQuad(quadKey: QuadKey, color: Int) {

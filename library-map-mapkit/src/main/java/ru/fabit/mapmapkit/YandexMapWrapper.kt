@@ -2,7 +2,6 @@ package ru.fabit.mapmapkit
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.PointF
 import android.os.Handler
@@ -11,6 +10,7 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import com.yandex.mapkit.*
 import com.yandex.mapkit.geometry.*
+import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.geometry.geo.Projection
 import com.yandex.mapkit.geometry.geo.Projections
 import com.yandex.mapkit.layers.Layer
@@ -38,7 +38,6 @@ import ru.fabit.map.dependencies.factory.GeoJsonFactory
 import ru.fabit.map.dependencies.factory.GeometryColorFactory
 import ru.fabit.map.dependencies.factory.MarkerBitmapFactory
 import ru.fabit.map.internal.data.QuadKeyRepository
-import ru.fabit.map.internal.data.jsonResource
 import ru.fabit.map.internal.domain.entity.*
 import ru.fabit.map.internal.domain.entity.Rect
 import ru.fabit.map.internal.domain.entity.marker.*
@@ -49,15 +48,7 @@ import ru.fabit.map.internal.protocol.MapProtocol
 import java.lang.ref.WeakReference
 import java.util.*
 import kotlin.collections.ArrayList
-import kotlin.collections.Collection
-import kotlin.collections.List
-import kotlin.collections.MutableList
-import kotlin.collections.contains
-import kotlin.collections.count
-import kotlin.collections.forEach
-import kotlin.collections.listOf
-import kotlin.collections.mutableListOf
-import kotlin.collections.toList
+import kotlin.math.roundToInt
 
 internal class YandexMapWrapper(
     private val context: Context,
@@ -71,8 +62,10 @@ internal class YandexMapWrapper(
     private val isEnabledPolylineMapObject: Boolean,
     private val valueVisibilityGeoJsonLayer: Int,
     private val parkingAnimatedImageProvider: ParkingAnimatedImageProvider,
-    private val userMarker: Bitmap
-) : MapProtocol {
+    private val userMarker: Bitmap,
+    private val mapStyleProvider: YandexMapStyleProviderImpl,
+    private val markerCalculator: MarkerCalculator
+) : MapProtocol, DiffCallback {
 
     private var isDebug: Boolean = false
 
@@ -81,6 +74,7 @@ internal class YandexMapWrapper(
     //10 см в реальном мире
     private val TEN_SM = 0.000001
     private var zoom = 17f
+    private val ZOOM_VISIBLE_GEOJSON = 16f
     private val uiThreadHandler: Handler
     private var isUserLocationMove = false
 
@@ -213,6 +207,75 @@ internal class YandexMapWrapper(
         }
     }
 
+    override fun onMarkersUpdated(
+        oldMarkers: MutableMap<String, Marker>,
+        newMarkers: MutableMap<String, Marker>,
+        zoom: Float
+    ) {
+        markerCalculator.calculateDiff(oldMarkers, newMarkers, this)
+    }
+
+    override fun onAdded(markers: List<Marker>) {
+        draw(markers)
+    }
+
+    override fun onRemoved(markers: List<Marker>) {
+        val mapObjectCollection = map()?.mapObjects
+        mapObjectCollection?.let {
+            var i = 0
+            it.traverse(PlacemarkMapObjectVisitor { placemarkMapObject ->
+                i++
+
+                val marker = placemarkMapObject.userData
+
+                val markersId = markers.map { it.id }
+                if (marker is Marker) {
+                    if (markersId.contains(marker.id)) {
+                        //Remove marker or stop animation
+
+                        //Remove marker or stop animation
+                        if (marker.type.equals(MarkerType.ANIMATION)) {
+                            val animatedIcon =
+                                (marker as AnimationMarker).animationIcon as PlacemarkAnimation?
+                            if (animatedIcon != null && animatedIcon.isValid) {
+                                animationMarkerListener?.onAnimationStop(marker)
+                                animatedIcon.stop()
+                            }
+                        } else {
+                            placemarkMapObject.removeTapListener(mapObjectTapListener)
+                            removeRelativeObjects(marker, mapObjectCollection)
+                        }
+                        mapObjectCollection.remove(placemarkMapObject)
+                    }
+                }
+
+            })
+        }
+    }
+
+    override fun onUpdated(markers: List<Marker>) {
+        val mapObjectCollection = map()?.mapObjects
+
+        mapObjectCollection?.let {
+            it.traverse(PlacemarkMapObjectVisitor { placemarkMapObject ->
+                val userData = placemarkMapObject.userData
+                if (userData is Marker) {
+                    val marker = userData
+                    val index = markers.indexOf(marker)
+                    if (index != -1) {
+                        val updatedMarker = markers[index]
+                        //update marker
+                        val markerData = updatedMarker.data
+                        marker.state = updatedMarker.state
+                        marker.data = markerData
+                        marker.type = updatedMarker.type
+                        redrawPlacemarkMapObject(placemarkMapObject, marker)
+                    }
+                }
+            })
+        }
+    }
+
     override fun init(style: String) {
         mapView?.let { mapReference = WeakReference(it.map) }
         startMapKit(mapView, style)
@@ -221,16 +284,6 @@ internal class YandexMapWrapper(
     override fun start() {
         MapKitFactory.getInstance().onStart()
         mapView?.onStart()
-        locationManager?.subscribeForLocationUpdates(
-            0.0,
-            0,
-            10.0,
-            false,
-            FilteringMode.OFF,
-            observableLocationListener
-        )
-        locationManager?.requestSingleUpdate(singleLocationListener)
-        enableLocation(true)
     }
 
     override fun getMapView(): View? {
@@ -339,7 +392,6 @@ internal class YandexMapWrapper(
         val layerOptions = LayerOptions()
         layerOptions.animateOnActivation = true
         layerOptions.overzoomMode = OverzoomMode.WITH_PREFETCH
-        layerOptions.cacheable = true
         map()?.let {
             layer = it.addGeoJSONLayer(
                 MAP_ITEM_LAYER_NAME,
@@ -471,7 +523,7 @@ internal class YandexMapWrapper(
             mapListeners.forEach {
                 it.onMapTap(
                     MapPoint(
-                        point.longitude,
+                        point.latitude,
                         point.latitude
                     )
                 )
@@ -500,7 +552,7 @@ internal class YandexMapWrapper(
             mapListeners.forEach {
                 it.onPolyLineClicked(
                     MapPoint(
-                        point.longitude,
+                        point.latitude,
                         point.latitude
                     )
                 )
@@ -574,22 +626,10 @@ internal class YandexMapWrapper(
     override fun drawQuad(key: String, rect: Rect, color: Int) {
         uiThreadHandler.post {
             val points: MutableList<Point> = ArrayList()
-            points.add(Point(
-                rect.bottomLeft.latitude,
-                rect.bottomLeft.longitude
-            ))
-            points.add(Point(
-                rect.bottomRight.latitude,
-                rect.bottomRight.longitude
-            ))
-            points.add(Point(
-                rect.topRight.latitude,
-                rect.topRight.longitude
-            ))
-            points.add(Point(
-                rect.topLeft.latitude,
-                rect.topLeft.longitude
-            ))
+            points.add(Point(rect.bottomLeft.longitude, rect.bottomLeft.latitude))
+            points.add(Point(rect.bottomRight.longitude, rect.bottomRight.latitude))
+            points.add(Point(rect.topRight.longitude, rect.topRight.latitude))
+            points.add(Point(rect.topLeft.longitude, rect.topLeft.latitude))
 
             val innerRings = java.util.ArrayList<LinearRing>()
             val outerRing = LinearRing(points.toList())
@@ -613,68 +653,6 @@ internal class YandexMapWrapper(
         enable?.let {
             userLocationLayer?.isHeadingEnabled = enable
             userLocationLayer?.isVisible = enable
-        }
-    }
-
-    override fun insert(markers: List<Marker>, zoom: Float) {
-        draw(markers, zoom)
-    }
-
-    override fun remove(markers: List<Marker>) {
-
-        val mapObjectCollection = map()?.mapObjects
-        mapObjectCollection?.let {
-            var i = 0
-            it.traverse(PlacemarkMapObjectVisitor { placemarkMapObject ->
-                i++
-
-                val marker = placemarkMapObject.userData
-
-                if (marker is Marker) {
-                    if (markers.contains(marker)) {
-                        //Remove marker or stop animation
-
-                        //Remove marker or stop animation
-                        if (marker.type.equals(MarkerType.ANIMATION)) {
-                            val animatedIcon =
-                                (marker as AnimationMarker).animationIcon as PlacemarkAnimation?
-                            if (animatedIcon != null && animatedIcon.isValid) {
-                                animationMarkerListener?.onAnimationStop(marker)
-                                animatedIcon.stop()
-                            }
-                        } else {
-                            placemarkMapObject.removeTapListener(mapObjectTapListener)
-                            removeRelativeObjects(marker, mapObjectCollection)
-                        }
-                        mapObjectCollection.remove(placemarkMapObject)
-                    }
-                }
-
-            })
-        }
-    }
-
-    override fun update(markers: List<Marker>, zoom: Float) {
-
-        val mapObjectCollection = map()?.mapObjects
-
-        mapObjectCollection?.let {
-            it.traverse(PlacemarkMapObjectVisitor { placemarkMapObject ->
-                val userData = placemarkMapObject.userData
-                if (userData is Marker) {
-                    val marker = userData
-                    val index = markers.indexOf(marker)
-                    if (index != -1) {
-                        val updatedMarker = markers[index]
-                        //update marker
-                        val markerData = updatedMarker.data
-                        marker.state = updatedMarker.state
-                        marker.data = markerData
-                        marker.type = updatedMarker.type
-                        redrawPlacemarkMapObject(placemarkMapObject, marker)
-                    }
-                }
-            })
         }
     }
 
@@ -881,7 +859,7 @@ internal class YandexMapWrapper(
                     val marker: Marker? =
                         userData as Marker?
                     //Add new relative objects and mapObject
-                    if (marker?.type == MarkerType.ANIMATION) {
+                    if (marker?.type == MarkerType.ANIMATION && (marker as AnimationMarker).showAnimation) {
                         drawAnimationMarker(
                             context,
                             marker as AnimationMarker
@@ -909,7 +887,7 @@ internal class YandexMapWrapper(
                         userData as Marker?
 
                     //Add new relative objects and mapObject
-                    if (marker?.type == MarkerType.ANIMATION) {
+                    if (marker?.type == MarkerType.ANIMATION && (marker as AnimationMarker).showAnimation) {
                         drawAnimationMarker(
                             context,
                             marker as AnimationMarker
@@ -942,15 +920,21 @@ internal class YandexMapWrapper(
         mapView?.map?.setMapStyle(style)
     }
 
+    override fun isAnimatedMarkersEnabled(): Boolean {
+        return true
+    }
+
+    override fun getMapStyleProvider() = mapStyleProvider
+
     //endregion
 
     //region ===================== Internal logic ======================
 
-    private fun draw(markers: List<Marker>, zoom: Float) {
+    private fun draw(markers: List<Marker>) {
         for (marker in markers) {
             var placemarkMapObject: PlacemarkMapObject?
 
-            if (marker.type == MarkerType.ANIMATION) {
+            if (marker.type == MarkerType.ANIMATION && (marker as AnimationMarker).showAnimation) {
                 drawAnimationMarker(
                     context,
                     marker as AnimationMarker
@@ -1061,7 +1045,7 @@ internal class YandexMapWrapper(
                 if (type == Location.LINE_STRING) {
                     if (isEnabledFreeSpaces) {
                         setCirclesShape(location, marker)
-                    } else if (isEnabledPolylineMapObject){
+                    } else if (isEnabledPolylineMapObject) {
                         setPolylineShape(location, marker, forObject)
                     }
                 } else if (type == Location.POLYGON) {
@@ -1088,7 +1072,12 @@ internal class YandexMapWrapper(
                         lineStringMapCoordinates,
                         spaces
                     )
-                    val color = geometryColorFactory.getColorStrokeGeometry(context, marker, isRadarOn, isDisabledOn)
+                    val color = geometryColorFactory.getColorStrokeGeometry(
+                        context,
+                        marker,
+                        isRadarOn,
+                        isDisabledOn
+                    )
                     for (coordinate in coordinates) {
                         val circle = this.mapReference?.get()?.mapObjects?.addCircle(
                             Circle(Point(coordinate.second, coordinate.first), 1.5f),
@@ -1161,7 +1150,12 @@ internal class YandexMapWrapper(
                 polygonMapObject.strokeWidth = 4f
                 marker.data?.let {
                     polygonMapObject.strokeColor =
-                        geometryColorFactory.getColorStrokeGeometry(context, marker, isRadarOn, isDisabledOn)
+                        geometryColorFactory.getColorStrokeGeometry(
+                            context,
+                            marker,
+                            isRadarOn,
+                            isDisabledOn
+                        )
                     polygonMapObject.fillColor = geometryColorFactory
                         .getColorFillGeometry(context, marker, isRadarOn, isDisabledOn)
                 }
@@ -1322,7 +1316,7 @@ internal class YandexMapWrapper(
                 visibleRegion.bottomRight.longitude,
                 visibleRegion.bottomRight.latitude
             ),
-            cameraPosition.zoom
+            cameraPosition.zoom.roundToInt().toFloat()
         )
     }
 

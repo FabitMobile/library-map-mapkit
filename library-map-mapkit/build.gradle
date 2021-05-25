@@ -12,8 +12,8 @@ android {
     defaultConfig {
         minSdkVersion 19
         targetSdkVersion 30
-        versionCode 5
-        versionName "1.0.2-beta.4"
+        versionCode 6
+        versionName "1.0.3-beta.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -36,6 +36,6 @@ android {
 dependencies {
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation 'com.github.FabitMobile:library-map:3.0.0-beta.4'
+    implementation 'com.github.FabitMobile:library-map:3.0.1-beta.1'
     implementation 'com.yandex.android:mapkit:3.5.0'
 }
