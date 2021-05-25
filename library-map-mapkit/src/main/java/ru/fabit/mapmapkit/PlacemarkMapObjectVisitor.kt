@@ -24,6 +24,13 @@ internal class PlacemarkMapObjectVisitor(val onPlacemarkVisitedCallback: (placem
     override fun onCollectionVisitEnd(p0: MapObjectCollection) {
     }
 
+    override fun onClusterizedCollectionVisitStart(p0: ClusterizedPlacemarkCollection): Boolean {
+        return true
+    }
+
+    override fun onClusterizedCollectionVisitEnd(p0: ClusterizedPlacemarkCollection) {
+    }
+
     override fun onCollectionVisitStart(p0: MapObjectCollection): Boolean {
         return true
     }

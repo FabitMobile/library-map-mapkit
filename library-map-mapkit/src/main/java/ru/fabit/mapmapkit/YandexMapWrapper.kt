@@ -183,7 +183,7 @@ internal class YandexMapWrapper(
     init {
         MapKitFactory.setApiKey(key)
         MapKitFactory.initialize(context)
-        projection = Projections.createWgs84Mercator()
+        projection = Projections.getWgs84Mercator()
         urlProvider = ResourceUrlProvider { s -> "" }
         regularNPolygon = RegularNPolygon(projection)
     }
