@@ -37,5 +37,5 @@ dependencies {
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation 'com.github.FabitMobile:library-map:3.0.1-beta.1'
-    implementation 'com.yandex.android:mapkit:3.5.0'
+    implementation 'com.yandex.android:maps.mobile:4.0.0-full'
 }
