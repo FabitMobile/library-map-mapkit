@@ -23,7 +23,9 @@ class MapkitProtocolFactory {
             isEnabledPolylineMapObject: Boolean,
             valueVisibilityGeoJsonLayer: Int,
             parkingAnimatedImageProvider: ParkingAnimatedImageProvider,
-            userMarker: Bitmap
+            userMarker: Bitmap,
+            mapStyleProvider: YandexMapStyleProviderImpl,
+            markerCalculator: MarkerCalculator
         ): MapProtocol {
             return YandexMapWrapper(
                 context,
@@ -37,7 +39,9 @@ class MapkitProtocolFactory {
                 isEnabledPolylineMapObject,
                 valueVisibilityGeoJsonLayer,
                 parkingAnimatedImageProvider,
-                userMarker
+                userMarker,
+                mapStyleProvider,
+                markerCalculator
             )
         }
     }
