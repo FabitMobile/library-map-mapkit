@@ -1010,7 +1010,7 @@ internal class YandexMapWrapper(
         this.mapReference?.get()?.logo?.setAlignment(
             Alignment(
                 HorizontalAlignment.RIGHT,
-                VerticalAlignment.TOP
+                VerticalAlignment.BOTTOM
             )
         );
     }
