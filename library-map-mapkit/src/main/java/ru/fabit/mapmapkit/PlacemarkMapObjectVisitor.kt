@@ -14,9 +14,6 @@ internal class PlacemarkMapObjectVisitor(val onPlacemarkVisitedCallback: (placem
     override fun onPolylineVisited(p0: PolylineMapObject) {
     }
 
-    override fun onColoredPolylineVisited(p0: ColoredPolylineMapObject) {
-    }
-
     override fun onPlacemarkVisited(p0: PlacemarkMapObject) {
         onPlacemarkVisitedCallback(p0)
     }
@@ -25,7 +22,7 @@ internal class PlacemarkMapObjectVisitor(val onPlacemarkVisitedCallback: (placem
     }
 
     override fun onClusterizedCollectionVisitStart(p0: ClusterizedPlacemarkCollection): Boolean {
-        return true
+        return false
     }
 
     override fun onClusterizedCollectionVisitEnd(p0: ClusterizedPlacemarkCollection) {

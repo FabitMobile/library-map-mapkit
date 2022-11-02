@@ -22,6 +22,8 @@ internal class GeoJsonTileProvider(
     context: Context
 ) : TileProvider {
 
+    private val selectedMarkerId = -1
+
     val colorbase = ContextCompat.getColor(context, R.color.light_gray)
     val color1 = ContextCompat.getColor(context, R.color.transparent_green)
     val color2 = ContextCompat.getColor(context, R.color.transparent_yellow)
@@ -54,7 +56,8 @@ internal class GeoJsonTileProvider(
 
     private fun generateGeoJsonFeature(tileId: TileId, projection: Projection): ByteArray {
         val mapBounds = TileUtil.getRegion(projection, tileId)
-        return geoJsonFactory.createGeoJsonString(mapBounds, 0).toByteArray()
+        val geoJsonString = geoJsonFactory.createGeoJsonString(mapBounds, selectedMarkerId)
+        return geoJsonString.toByteArray()
     }
 
     private fun drawQuad(quadKey: QuadKey, color: Int) {
