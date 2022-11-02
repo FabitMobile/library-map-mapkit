@@ -18,7 +18,7 @@ class MarkerCalculator {
 
         searchIntersectionOldInNew(oldMarkers, newMarkers, toRemove)
 
-        searchIntersectionNewInOld(oldMarkers, newMarkers, toAdd, toUpdate)
+        searchIntersectionNewInOld(oldMarkers, newMarkers, toAdd)
 
         if (toRemove.count() > 0) {
             diffCallback.onRemoved(toRemove)
@@ -41,15 +41,17 @@ class MarkerCalculator {
         toRemove: MutableList<Marker>
     ) {
         for ((key, value) in oldMarkers) {
-
             val mapObjectToRemove = newMarkers[key]
             if (mapObjectToRemove == null) {
                 if (value.type != MarkerType.ANIMATION) {
                     toRemove.add(value)
                 }
             } else {
+                val oldData = mapObjectToRemove.data
+                val newData = value.data
+                val areEquals = oldData?.freeSpaces == newData?.freeSpaces
                 val markerTypeEquals = mapObjectToRemove.type == value.type
-                if (!markerTypeEquals) {
+                if (!markerTypeEquals || !areEquals) {
                     toRemove.add(value)
                 }
             }
@@ -59,28 +61,18 @@ class MarkerCalculator {
     private fun searchIntersectionNewInOld(
         oldMarkers: Map<String, Marker>,
         newMarkers: Map<String, Marker>,
-        toAdd: MutableList<Marker>,
-        toUpdate: MutableList<Marker>
+        toAdd: MutableList<Marker>
     ) {
         for ((key, value) in newMarkers) {
-
             val mapObjectToAdd = oldMarkers[key]
-
             if (mapObjectToAdd == null) {
                 toAdd.add(value)
             } else {
-
                 val oldData = mapObjectToAdd.data
                 val newData = value.data
-
                 val areEquals = oldData?.freeSpaces == newData?.freeSpaces
-
-                if (!areEquals) {
-                    toUpdate.add(value)
-                }
-
                 val markerTypeEquals = mapObjectToAdd.type == value.type
-                if (!markerTypeEquals) {
+                if (!markerTypeEquals || !areEquals) {
                     toAdd.add(value)
                 }
             }
